@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "treble-build",
+  "description": "Figma-to-code build assistant",
+  "owner": {
+    "name": "treble-build",
+    "url": "https://treble.build"
+  },
+  "plugins": [
+    {
+      "name": "treble",
+      "source": "./.claude-plugin/ui",
+      "description": "Sync Figma designs to disk, analyze, and build components"
+    }
+  ]
+}

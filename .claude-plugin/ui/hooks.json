@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "test -f .treble/config.toml && echo 'treble project detected' || true"
+          }
+        ]
+      }
+    ]
+  }
+}
