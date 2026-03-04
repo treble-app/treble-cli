@@ -20,12 +20,13 @@ Compare a built component's rendered output against the Figma reference image.
 
 2. **Take a screenshot** of the running dev server:
    - The component should be running locally (e.g., `npm run dev`)
-   - Use the browser automation tools to capture a screenshot
+   - If possible, try to match the resolution of the figma page
+   - Use the browser automation tools to capture a screenshot; you can take a screenshot of a given dom element if its more appropriate for comparison
 
 3. **Compare visually**:
    - Look at both images side by side
    - Check: layout, spacing, colors, typography, alignment, responsive behavior
-   - Note any discrepancies
+   - Note any discrepancies; you obsess about pixel perfection
 
 4. **Report findings**:
    - List what matches
