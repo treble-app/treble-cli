@@ -11,7 +11,7 @@ use crate::figma::types::{FigmaManifest, FlatNode, slugify};
 use anyhow::{Context, Result};
 use colored::Colorize;
 
-pub async fn run(node_query: String, frame_name: Option<String>, scale: f64) -> Result<()> {
+pub async fn run(node_query: String, frame_name: Option<String>, scale: f64, json_output: bool) -> Result<()> {
     let project_root = find_project_root()?;
     let project_config = ProjectConfig::load(&project_root)?;
     let global_config = GlobalConfig::load()?;
@@ -31,11 +31,13 @@ pub async fn run(node_query: String, frame_name: Option<String>, scale: f64) -> 
     let (node_id, node_name, frame_slug) =
         resolve_node(&figma_dir, &manifest, &node_query, frame_name.as_deref())?;
 
-    println!(
-        "Rendering {} ({})...",
-        node_name.bold(),
-        node_id.dimmed()
-    );
+    if !json_output {
+        println!(
+            "Rendering {} ({})...",
+            node_name.bold(),
+            node_id.dimmed()
+        );
+    }
 
     // Call Figma images API
     let images = client
@@ -67,13 +69,24 @@ pub async fn run(node_query: String, frame_name: Option<String>, scale: f64) -> 
         .strip_prefix(&project_root)
         .unwrap_or(&output_path);
 
-    println!(
-        "{} Saved to {}",
-        "Done!".green().bold(),
-        relative_path.display()
-    );
-    println!("  Size: {} bytes", bytes.len());
-    println!("  Scale: {}x", scale);
+    if json_output {
+        let output = serde_json::json!({
+            "nodeId": node_id,
+            "nodeName": node_name,
+            "path": relative_path.display().to_string(),
+            "size": bytes.len(),
+            "scale": scale,
+        });
+        println!("{}", serde_json::to_string(&output)?);
+    } else {
+        println!(
+            "{} Saved to {}",
+            "Done!".green().bold(),
+            relative_path.display()
+        );
+        println!("  Size: {} bytes", bytes.len());
+        println!("  Scale: {}x", scale);
+    }
 
     Ok(())
 }

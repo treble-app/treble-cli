@@ -18,6 +18,10 @@ You are Treble's Design Planner. Your job is to analyze a Figma frame and produc
 
 3. **Work section by section.** Do NOT try to read an entire `nodes.json` file at once for large frames. Use the slicing workflow described below.
 
+4. **Zoom into every visual group.** The full-page reference.png is too small to see details. For every group of elements that visually belong together (a nav bar, a hero section, a card row, a footer), use `treble show` to render it and `Read` the PNG before analyzing it. Identify groups from the tree structure (FRAME/GROUP children) or by clustering nearby nodes by y-position. The tree tells you WHAT is there; the render tells you HOW it looks. Do not write implementation notes from tree data alone.
+
+5. **Every component MUST have `implementationNotes`** — detailed, specific notes on how to reproduce the visual look in CSS/Tailwind. Vague notes like "hero section with heading and button" are useless. Good notes describe exact colors, sizes, layout technique, background treatment, typography, spacing, and visual effects. These notes are the primary input the build agent uses to write code.
+
 ## Step 0: Prerequisites
 
 Verify synced data exists:
@@ -62,20 +66,27 @@ For each target frame:
    ```
    Then read each section image for visual context.
 
-## Step 2.5: Choose your analysis strategy
+## Step 2.5: Zoom into every visual group
 
-Check the node count from `treble tree` output:
+The full-page reference.png shows the overall layout but NOT the details you need to write implementation notes. You must zoom into each visual group.
 
-- **< 100 nodes**: Read full `nodes.json`, analyze in one pass.
-- **100–300 nodes**: Use `treble tree --depth 2` for overview, then `treble tree --root <sectionId> --verbose` for each major section.
-- **> 300 nodes**: Work strictly section-by-section:
-  1. `treble tree "{FrameName}" --depth 1` — list all sections with IDs
-  2. For each section: `treble show "<nodeId>" --frame "{FrameName}"` — see it visually
-  3. For each section: `treble tree "{FrameName}" --root "<nodeId>" --verbose` — get structure
-  4. For each section: `treble tree "{FrameName}" --root "<nodeId>" --json` — get machine-readable data with exact measurements
-  5. Analyze one section fully, then move to the next
+**For EVERY frame:**
 
-**NEVER read the full nodes.json for a 300+ node frame.** It will flood your context and degrade analysis quality.
+1. `treble tree "{FrameName}" --depth 1` — identify all visual groups (sections, rows, panels)
+2. **For each group** — things that visually belong together (a nav, a hero, a card grid, a footer):
+   a. `treble show "<nodeId>" --frame "{FrameName}" --json` — render it as a close-up. The `--json` flag returns `{"nodeId", "nodeName", "path", "size", "scale"}` so you can capture the saved path.
+   b. `Read` the saved PNG — now you can actually see button shapes, icon details, typography, spacing, gradients, shadows
+   c. **If the section looks complex** (lots of small elements, dense UI, multiple card types, forms with many fields) — zoom in further. Use `treble tree --root "<groupId>" --depth 1` to find sub-groups, then `treble show` each one. Keep zooming until you can clearly see every element.
+   d. `treble tree "{FrameName}" --root "<nodeId>" --verbose` — get fills, fonts, padding, radius
+   e. `treble tree "{FrameName}" --root "<nodeId>" --json` — get machine-readable measurements
+   f. Write your implementation notes for this group BEFORE moving to the next
+   g. **Record every screenshot path** — save them in the component's `referenceImages` array (see schema below). These are how the build agent and comparison tools find the visual references later.
+
+**How to identify groups:**
+- **Structured Figma files**: depth-1 children are usually FRAME or GROUP nodes that represent visual sections. Use them directly.
+- **Messy/flat Figma files**: depth-1 children are loose primitives. Group them by y-position — nodes within ~50px vertical gap belong together. Name them by what they ARE visually (hero, features, testimonials), not by their Figma layer name.
+
+**NEVER read the full nodes.json for a 300+ node frame.** It will flood your context and degrade analysis quality. Use the slice tools above instead.
 
 ## Step 2.6: Handling messy/unstructured Figma files
 
@@ -120,16 +131,15 @@ Each line shows: `TYPE Name [WIDTHxHEIGHT] NODE_ID`. The node ID (e.g. `254:1876
 **2. Render the node as a screenshot** (calls Figma API, saves PNG to disk):
 
 ```bash
-treble show "254:1876" --frame "Homepage"
+treble show "254:1876" --frame "Homepage" --json
 ```
 
 Output:
+```json
+{"nodeId":"254:1876","nodeName":"Group 1171277834","path":".treble/figma/homepage/snapshots/group-1171277834.png","size":4832,"scale":2}
 ```
-Rendering Group 1171277834 (254:1876)...
-Done! Saved to .treble/figma/homepage/snapshots/group-1171277834.png
-  Size: 4832 bytes
-  Scale: 2x
-```
+
+The `path` field is relative to the project root. Save this path in the component's `referenceImages` array.
 
 **3. Read the saved screenshot** (now you can see it):
 
@@ -197,45 +207,82 @@ treble tree "Homepage" --root "254:1876" --json
 treble tree "Homepage" --depth 1
 
 # 2. Pick a section by its node ID and render it
-treble show "254:1876" --frame "Homepage"
+treble show "254:1876" --frame "Homepage" --json
+# → {"nodeId":"254:1876","nodeName":"Group 1171277834","path":".treble/figma/homepage/snapshots/group-1171277834.png","size":4832,"scale":2}
 
 # 3. Look at the rendered screenshot (path from step 2 output)
 Read .treble/figma/homepage/snapshots/group-1171277834.png
 
-# 4. Get the structural details as JSON
+# 4. If it looks complex, zoom into sub-groups
+treble tree "Homepage" --root "254:1876" --depth 1
+# → find child group IDs, then treble show each one
+
+# 5. Get the structural details as JSON
 treble tree "Homepage" --root "254:1876" --json
 ```
 
 Repeat for each section. You now have both the visual (screenshot) and structural (JSON) data for one piece of the page without loading the entire node tree.
 
-From each section, identify:
+For each section you zoomed into, do TWO things: identify components, and write visual reproduction notes.
 
-### Components (reusable UI patterns)
+### 3a. Identify components (reusable UI patterns)
 - Buttons, Inputs, Badges, Labels, Links, Icons, Cards, etc.
 - Name by ROLE, not by Figma layer name
 - One component per distinct UI pattern — "Primary Button" and "Ghost Button" = one Button with variants
 - Note which Figma node ID corresponds to each component
 
-### Asset classification
-How each component should be built:
+**Asset classification** — how each component should be built:
 - `code` — standard React component (default)
 - `svg-extract` — vector icons/logos (use `treble show` to render, then extract)
 - `icon-library` — matches a known icon library (Lucide: Mail, Phone, ArrowRight, Check, Menu, X, Search, etc.)
 - `image-extract` — photos, illustrations → extract as image files
 
-### shadcn/ui anchoring
-Match components to shadcn/ui primitives where possible:
+**shadcn/ui anchoring** — match to primitives where possible:
 - Button, Input, Label, Badge, Card, Dialog, DropdownMenu, Select, Textarea, Avatar, etc.
 - This tells the build phase to USE shadcn instead of building from scratch
 - Include a confidence score (0.0–1.0)
 
-### Design tokens
-Extract from the `--verbose` or `--json` output:
+**Design tokens** — extract from `--verbose` or `--json`:
 - Colors (hex values from fills — focus on repeated colors, not one-offs)
 - Typography (font family, size, weight, line height)
 - Spacing (padding, gaps from auto-layout)
-- Border radius
-- Shadows
+- Border radius, shadows
+
+### 3b. Visual reproduction notes (CRITICAL)
+
+This is the most important part of the analysis. For every component and every section, you must write **implementation notes** that describe HOW to reproduce the visual look in code. These notes are what the build agent will use to actually write correct CSS/Tailwind.
+
+**What to capture for each component:**
+
+- **Layout technique**: flexbox row vs column, grid, absolute positioning, sticky, etc.
+- **Background treatment**: solid color, gradient (direction + stops), image with overlay, blur/backdrop-filter
+- **Typography details**: exact font, size, weight, letter-spacing, line-height, text color, truncation behavior
+- **Shape and borders**: border-radius (pill vs rounded-md vs sharp), border width/color/style, outline vs border
+- **Spacing**: internal padding, gap between children, margin from neighbors
+- **Visual effects**: shadows (box-shadow values), opacity, hover states (if implied by design), transitions
+- **Icon handling**: which icon library matches, size relative to text, stroke vs fill
+- **Image handling**: aspect ratio, object-fit behavior, rounded corners, overlay treatment
+- **Responsive hints**: does this look like it stacks on mobile? Full-width or max-width container?
+
+**Example of GOOD reproduction notes:**
+
+```
+"implementationNotes": "Dark hero section. Full-width with 800px height. Background is a photo
+(image-extract) with a linear-gradient overlay from rgba(0,0,0,0.7) left to transparent right.
+Heading is 56px Aeonik Bold, white, max-width ~600px, left-aligned. Subtext is 18px weight 400,
+white/70% opacity, 24px below heading. CTA button is pill-shaped (rounded-full), gold background
+(#CDB07A), dark text (#25282A), 15px font, 40px height, with a right-arrow icon (Lucide ArrowRight).
+Layout is flex-col items-start justify-center with ~80px left padding. The entire section has no
+visible border or shadow."
+```
+
+**Example of BAD notes (too vague — useless to the build agent):**
+
+```
+"implementationNotes": "Hero section with heading and button"
+```
+
+The difference between a pixel-perfect build and a generic-looking build is entirely in these notes. Take the time to describe what you see.
 
 ## Step 4: Write analysis.json
 
@@ -267,7 +314,9 @@ Write the analysis to `.treble/analysis.json` with this structure:
       "tokens": { "bg": "#1F3060", "radius": "rounded-full", "px": "px-8" },
       "composedOf": [],
       "assetKind": "code",
-      "filePath": "src/components/Button.tsx"
+      "filePath": "src/components/Button.tsx",
+      "referenceImages": [".treble/figma/contact/snapshots/button.png"],
+      "implementationNotes": "Pill-shaped button (rounded-full). Primary: bg #CDB07A, text #25282A, 15px Aeonik w400, height 40px, px-6. Ghost: transparent bg, white text, 1px white/30 border. Both have subtle hover brightness increase. Right-arrow Lucide icon when used as CTA (ArrowRight, 16px, ml-2)."
     },
     "HeroSection": {
       "tier": "organism",
@@ -279,7 +328,12 @@ Write the analysis to `.treble/analysis.json` with this structure:
       "tokens": { "bg": "#F8F9FA" },
       "composedOf": ["Heading", "Paragraph", "Button"],
       "assetKind": "code",
-      "filePath": "src/components/HeroSection.tsx"
+      "filePath": "src/components/HeroSection.tsx",
+      "referenceImages": [
+        ".treble/figma/contact/snapshots/hero.png",
+        ".treble/figma/contact/snapshots/hero-cta-button.png"
+      ],
+      "implementationNotes": "Full-width section, 800px height. Background: photo (image-extract 'hero-bg.jpg') with linear-gradient overlay from rgba(0,0,0,0.7) on left to transparent on right (bg-gradient-to-r). Content is flex-col items-start justify-center, pl-20, max-w-[600px]. Heading: 56px Aeonik Bold, white, leading-tight, tracking-tight. Subtitle: 18px w400, white/70 opacity, mt-6. CTA Button (primary variant) mt-8. No border, no shadow on section itself."
     }
   },
   "pages": {
@@ -295,7 +349,9 @@ Write the analysis to `.treble/analysis.json` with this structure:
           "height": 64,
           "background": "#ffffff",
           "fullWidth": true,
-          "containedAtoms": ["Logo", "NavLink", "Button"]
+          "containedAtoms": ["Logo", "NavLink", "Button"],
+          "referenceImages": [".treble/figma/contact/snapshots/navbar.png"],
+          "implementationNotes": "Sticky top nav, white bg, subtle bottom border (1px #E5E7EB). Flex row justify-between items-center, max-w-7xl mx-auto, h-16, px-6. Logo left, nav links center (flex gap-8, 15px Aeonik w400 text-gray-700 hover:text-black), CTA button right (primary variant, small size)."
         }
       ],
       "pageComponentName": "ContactPage",

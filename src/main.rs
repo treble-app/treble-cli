@@ -95,6 +95,10 @@ enum Commands {
         /// Render scale (default: 2)
         #[arg(long, default_value = "2")]
         scale: f64,
+
+        /// Output as JSON (for agent consumption — includes saved path)
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -123,6 +127,7 @@ async fn main() -> Result<()> {
             node,
             frame,
             scale,
-        } => commands::show::run(node, frame, scale).await,
+            json,
+        } => commands::show::run(node, frame, scale, json).await,
     }
 }
