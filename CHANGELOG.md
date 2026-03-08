@@ -1,3 +1,18 @@
+# [1.1.0](https://github.com/treble-app/cli/compare/v1.0.0...v1.1.0) (2026-03-08)
+
+
+### Bug Fixes
+
+* include scripts/ in npm package files ([53b67e9](https://github.com/treble-app/cli/commit/53b67e9f81f7c14df6d3834655b929f6abde0a1d))
+* remove postinstall hook, restore npm ci in release ([d0807e3](https://github.com/treble-app/cli/commit/d0807e3b5f64e5f91008111add52e45d85a03973))
+* rename marketplace from treble-build to treble-app ([9854d48](https://github.com/treble-app/cli/commit/9854d487598514ff2e875d3f8cc0197044ff3b14))
+* use npm install instead of npm ci in release workflow ([417e942](https://github.com/treble-app/cli/commit/417e94207c275e18b99584300d0090b1a6c53225))
+
+
+### Features
+
+* add /treble:sync command and treble status CLI ([be71004](https://github.com/treble-app/cli/commit/be71004068cdca263be978625842f37c6b9a967e))
+
 # 1.0.0 (2026-03-08)
 
 
