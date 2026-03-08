@@ -91,6 +91,7 @@ This ensures the user's `treble` binary in PATH is always up to date.
 - Commit prefixes: `fix:` → patch, `feat:` → minor, `BREAKING CHANGE` → major
 - `chore:`, `docs:`, `style:`, `test:`, `ci:` do NOT trigger a release
 - CI cross-compiles for darwin-arm64/x64 + linux-x64/arm64, publishes to npm as `@treble-app/cli`
+- **NEVER manually bump versions** in `Cargo.toml` or `package.json` — semantic-release owns versioning. CI sets `Cargo.toml` version via `sed` during build.
 
 ## Auth
 
