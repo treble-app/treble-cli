@@ -27,6 +27,23 @@ docker-compose exec wordpress wp plugin install advanced-custom-fields-pro --act
 ```
 If that fails (ACF Pro requires a license), tell the user they need to install ACF Pro manually and provide the download URL.
 
+## Treble CLI Tools Available
+
+You have access to `treble` CLI commands for Figma design data. Use these during visual verification (Step 6) to pull exact measurements when something looks off.
+
+- `treble tree "{frameName}" --root "{nodeId}" --verbose` — node tree with visual properties (fills, text, layout, spacing)
+- `treble tree "{frameName}" --root "{nodeId}" --json` — machine-readable node data
+- `treble show "{nodeId}" --frame "{frameName}" --json` — render a screenshot of a specific Figma node
+
+**On-disk design data:**
+- `.treble/figma/{slug}/reference.png` — full-frame Figma screenshot (your ground truth)
+- `.treble/figma/{slug}/nodes.json` — all Figma nodes with properties
+- `.treble/figma/{slug}/image-map.json` — extracted source images (photos, logos)
+- `.treble/figma/{slug}/assets/` — the actual image files
+- `.treble/analysis.json` — component inventory, design system tokens, typography, colors
+
+When a visual comparison flags a discrepancy, use `treble tree` to get the exact Figma values (font size, color, padding, gap) rather than eyeballing.
+
 ## Step 0: WordPress Infrastructure
 
 These are baseline requirements that must be in place before any page can work properly as a WordPress site. Do all of these ONCE.
@@ -576,20 +593,125 @@ docker-compose exec wordpress wp menu item add-custom "Primary" "Services" "#" -
 docker-compose exec wordpress wp menu item add-custom "Primary" "About Us" "#" --allow-root
 ```
 
-## Step 6: Visual Verification
+## Step 6: Visual Verification (Two-Tier)
 
-After all templates are rewritten and content is populated, do a visual check to ensure nothing broke.
+This is the final quality gate before handoff. You run TWO comparisons — one to catch template rewrite regressions, one to catch accumulated drift from the original Figma design.
 
-Spawn a subagent to:
-1. Screenshot the WordPress site at the same viewport width used during dev (1440px)
-2. Compare against the dev agent's last passing screenshot in `.treble/screenshots/`
-3. They should be visually identical — if not, the template rewrite introduced a regression
+### 6a. Capture post-CMS screenshot
 
-**Common issues to watch for:**
-- `wp_nav_menu()` outputting different markup than hardcoded nav → fix with Walker class
-- ACF image fields returning different-sized images → add explicit width/height or use `wp_get_attachment_image()`
-- WYSIWYG fields wrapping content in `<p>` tags the original didn't have → use `textarea` type instead, or strip wrapping tags
-- Missing content because field names don't match → double-check field name strings
+Spawn a `chrome-devtools-tester` subagent:
+
+```
+Navigate to the WordPress site at localhost:{port}.
+Wait for full page load (network idle).
+Take a full-page screenshot at 1440px width.
+Save to .treble/screenshots/{PageName}-cms.png
+Return the file path.
+```
+
+### 6b. Tier 1 — Regression check (post-CMS vs pre-CMS)
+
+Spawn a `general-purpose` subagent to compare the CMS screenshot against the dev agent's last passing screenshot:
+
+```
+Compare these two images:
+PRE-CMS: .treble/screenshots/{PageName}-impl.png (or the dev agent's last screenshot)
+POST-CMS: .treble/screenshots/{PageName}-cms.png
+
+These should be nearly identical. Flag ANY differences — even subtle ones.
+Focus on:
+1. Navigation markup changes (wp_nav_menu outputs <ul><li><a> — different from hardcoded <a> tags)
+2. Image sizing (ACF returns different dimensions than hardcoded src)
+3. Text wrapping (WYSIWYG adds <p> tags, textarea doesn't)
+4. Missing content (empty ACF fields → hidden sections)
+5. Spacing shifts (WordPress markup adds wrapper divs)
+
+Return JSON:
+{
+  "regressions": [
+    {"section": "NavBar", "issue": "nav links now wrapped in <ul><li>, adding bullet points", "fix": "Add Walker class to strip default list styling"}
+  ],
+  "passed": true|false
+}
+```
+
+**If regressions found:** Fix the template/Walker/field type, re-screenshot, re-compare. Max 2 attempts before flagging for manual review.
+
+**Common CMS regressions and fixes:**
+- `wp_nav_menu()` outputs different markup → write a custom Walker class in `functions.php`
+- ACF image fields return different sizes → use `wp_get_attachment_image()` with explicit size, or add `width`/`height` attributes
+- WYSIWYG wraps content in `<p>` tags → switch to `textarea` field type, or strip wrapping: `preg_replace('/^<p>(.*)<\/p>$/s', '$1', $content)`
+- Missing content because field names don't match → double-check field name strings against `get_field()` calls
+- ACF link fields rendering wrong → check return format is `array`, not `url`
+
+### 6c. Tier 2 — Figma fidelity check (post-CMS vs Figma reference)
+
+This is the final pass against the original design. The CMS refactor is the last time anyone touches these templates before client handoff — catch accumulated drift now.
+
+Spawn a `general-purpose` subagent:
+
+```
+You are doing a pixel-level visual comparison between the original Figma design and the final WordPress implementation.
+
+FIGMA REFERENCE: Read the file at .treble/figma/{slug}/reference.png
+IMPLEMENTATION: Read the file at .treble/screenshots/{PageName}-cms.png
+
+Compare section by section. For EACH visual section, report:
+
+1. LAYOUT — Structure correct? Flex direction, element order, alignment?
+2. SPACING — Margins, padding, gaps visually matching?
+3. COLORS — Backgrounds, text colors, borders match?
+4. TYPOGRAPHY — Font sizes, weights, line-heights look right?
+5. SHAPES — Border radius, shadows, decorative elements?
+6. IMAGES — Are photos the right size/position? Cropping correct?
+7. CONTENT — Does the dynamic content match what was in the Figma? Any truncation or overflow?
+
+Be HARSH. This is the final quality gate. Rate each section: MATCH / CLOSE / WRONG.
+
+Return JSON:
+{
+  "overall": "MATCH|CLOSE|WRONG",
+  "sections": [
+    {
+      "name": "Hero",
+      "rating": "CLOSE",
+      "discrepancies": ["heading font appears larger than Figma — check font-size value", "CTA button missing inner shadow"],
+      "suggestions": ["Use treble tree to verify exact font size from Figma node", "Add shadow-[inset_0_-2px_4px_rgba(0,0,0,0.1)] to button"]
+    }
+  ]
+}
+```
+
+### 6d. Fix Figma discrepancies
+
+If the fidelity check found issues rated WRONG or CLOSE with significant discrepancies:
+
+1. **Use `treble tree` to get exact values** — don't guess. Pull the real font size, color, padding, gap from the Figma node data.
+   ```bash
+   treble tree "Homepage" --root "254:1916" --verbose
+   ```
+
+2. **Fix the CSS/template** — adjust Tailwind classes, spacing values, colors. Remember: change ONLY styling, not content source (that's already ACF-powered).
+
+3. **Re-screenshot and re-compare** (repeat 6a + 6c). Max 2 fix attempts before marking the discrepancy as `"accepted"` with a note explaining why (e.g., "font is commercial trial — using fallback, slight metric difference expected").
+
+Write the verification results to `build-state.json`:
+```json
+{
+  "PageName": {
+    "cmsVerification": {
+      "regressionCheck": { "passed": true, "issues": [] },
+      "figmaFidelity": {
+        "overall": "CLOSE",
+        "sections": [...],
+        "acceptedDiscrepancies": ["Commercial font fallback — Georgia vs Canela Text"],
+        "attempts": 1
+      },
+      "verifiedAt": "ISO-8601"
+    }
+  }
+}
+```
 
 ## Step 7: Write Editorial Guide
 
