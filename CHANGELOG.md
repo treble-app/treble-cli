@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/treble-app/cli/compare/v1.1.2...v1.1.3) (2026-03-08)
+
+
+### Bug Fixes
+
+* Use Bearer auth for OAuth tokens, X-Figma-Token for PATs ([d81e438](https://github.com/treble-app/cli/commit/d81e4380f4ab6977316b27ad1ce639d1d4100fd8))
+
 ## [1.1.2](https://github.com/treble-app/cli/compare/v1.1.1...v1.1.2) (2026-03-08)
 
 
