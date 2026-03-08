@@ -21,9 +21,9 @@ Check in this order:
 
 ## Hand off
 
-Once you know the target, read and follow the matching skill file:
+Once you know the target, read and follow the matching skill file from the plugin's `skills/` directory:
 
-- **shadcn** → read and execute `/treble:dev-shadcn`
-- **wordpress** → read and execute `/treble:dev-basecoat-wp`
+- **shadcn** → read and execute `skills/dev-shadcn.md`
+- **wordpress** → read and execute `skills/dev-basecoat-wp.md`
 
 Pass through any arguments the user provided (e.g. component name).

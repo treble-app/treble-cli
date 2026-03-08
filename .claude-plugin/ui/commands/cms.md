@@ -21,8 +21,8 @@ Check in this order:
 
 ## Hand off
 
-Once you know the platform, read and follow the matching skill file:
+Once you know the platform, read and follow the matching skill file from the plugin's `skills/` directory:
 
-- **wordpress** → read and execute `/treble:cms-wp`
+- **wordpress** → read and execute `skills/cms-wp.md`
 
 Pass through any arguments the user provided (e.g. page name).
