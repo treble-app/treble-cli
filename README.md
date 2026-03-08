@@ -17,9 +17,23 @@ flowchart LR
 ```
 
 1. **`treble sync`** pulls your Figma frames to disk — screenshots, layer trees, and visual properties. No API calls after the first sync.
-2. **`/treble:plan`** (Claude Code plugin) reads the synced data and produces `analysis.json` — a component inventory with design tokens, build order, primitive matching, and responsive rules.
-3. **`/treble:dev`** classifies your design, picks the right stack (Next.js, Astro, or WordPress), scaffolds the project, and builds every component with a code → visual review → architectural review loop.
-4. **`/treble:cms`** wires up content editability — Sanity, Prismic, or WordPress Gutenberg blocks.
+2. **`/treble:plan`** reads the synced data and produces a component inventory with design tokens, build order, and responsive rules.
+3. **`/treble:dev`** classifies your design, picks the right stack, scaffolds the project, and runs the build loop.
+4. **`/treble:cms`** wires up content editability — Sanity, Prismic, or WordPress.
+
+### The build loop
+
+Each component goes through a code → review → fix cycle until it matches the Figma reference:
+
+```mermaid
+flowchart TD
+    A["Pick next component"] --> B["Generate code"]
+    B --> C["Screenshot implementation"]
+    C --> D{"Matches\nFigma?"}
+    D -- "No" --> B
+    D -- "Yes" --> E["Commit & advance"]
+    E --> A
+```
 
 The output is a real project — `npm run dev` works, components match the Figma design, and the code follows feature-based architecture.
 
