@@ -18,7 +18,10 @@ The only exception is `treble show`, which calls the Figma images API to render 
 | Command | What it does |
 |---------|-------------|
 | `/treble:plan` | Analyze Figma frames → write analysis.json + build-state.json |
-| `/treble:dev` | Build loop: code → visual review → architectural review → iterate |
+| `/treble:dev` | Build router — detects target stack, hands off to the right build command |
+| `/treble:dev-shadcn` | Build loop for React + shadcn/ui targets |
+| `/treble:dev-basecoat-wp` | Build loop for WordPress + Basecoat targets (pixel-perfect pages, hardcoded content) |
+| `/treble:cms-wp` | Make dev-wp pages editable — ACF fields, custom post types, nav menus, content population |
 | `/treble:tree` | Show the Figma layer outline for a frame |
 | `/treble:show` | Render a specific Figma node as a screenshot |
 | `/treble:compare` | Compare implementation against Figma reference |
@@ -59,9 +62,16 @@ treble show "55:1234"                    # Render by node ID
 
 ## Workflow
 
+### React + shadcn/ui
 1. `treble sync` — Pull Figma data to disk
 2. `/treble:plan` — Analyze the screenshots + node trees, write analysis.json
-3. `/treble:dev` — Implement components in build order, reviewing each one
+3. `/treble:dev` → `/treble:dev-shadcn` — Implement components in build order, reviewing each one
+
+### WordPress
+1. `treble sync` — Pull Figma data to disk
+2. `/treble:plan` — Analyze (uses shadcn as reference catalog for primitive matching — the dev agent translates)
+3. `/treble:dev` → `/treble:dev-basecoat-wp` — Build pixel-perfect pages with hardcoded content
+4. `/treble:cms-wp` — Make pages editable (ACF fields, CPTs, nav menus, content migration)
 
 ## How to Explore a Design (Slicing)
 
