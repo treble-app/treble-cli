@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/treble-app/cli/compare/v1.1.0...v1.1.1) (2026-03-08)
+
+
+### Bug Fixes
+
+* npm ci --omit=optional to skip missing platform packages ([564e077](https://github.com/treble-app/cli/commit/564e0770b117c4c41dbaae5f9ce26e4dfb5c8cb6))
+
 # [1.1.0](https://github.com/treble-app/cli/compare/v1.0.0...v1.1.0) (2026-03-08)
 
 
