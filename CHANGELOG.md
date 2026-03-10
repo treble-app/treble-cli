@@ -1,3 +1,10 @@
+## [1.1.7](https://github.com/treble-app/cli/compare/v1.1.6...v1.1.7) (2026-03-10)
+
+
+### Bug Fixes
+
+* restructure skills to {name}/SKILL.md for plugin discovery ([08ce96d](https://github.com/treble-app/cli/commit/08ce96da030ec56c9c6134766167eb7d4f904fde))
+
 ## [1.1.6](https://github.com/treble-app/cli/compare/v1.1.5...v1.1.6) (2026-03-10)
 
 
