@@ -1,3 +1,10 @@
+## [1.1.6](https://github.com/treble-app/cli/compare/v1.1.5...v1.1.6) (2026-03-10)
+
+
+### Bug Fixes
+
+* add layer composition analysis to plan→build pipeline ([9620f50](https://github.com/treble-app/cli/commit/9620f50faa4548e09228222f1ad2e4ff1e535d47))
+
 ## [1.1.5](https://github.com/treble-app/cli/compare/v1.1.4...v1.1.5) (2026-03-10)
 
 
