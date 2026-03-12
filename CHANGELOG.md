@@ -1,3 +1,10 @@
+## [1.1.9](https://github.com/treble-app/cli/compare/v1.1.8...v1.1.9) (2026-03-12)
+
+
+### Bug Fixes
+
+* add guard rails to dev prompt for CMS scope, Docker, and page selection ([456b8fb](https://github.com/treble-app/cli/commit/456b8fb2b29f8f875f6f3d8cd8ef15dec552a842))
+
 ## [1.1.8](https://github.com/treble-app/cli/compare/v1.1.7...v1.1.8) (2026-03-10)
 
 
